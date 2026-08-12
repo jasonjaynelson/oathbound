@@ -1,0 +1,53 @@
+# Oathbound — Last Vigil
+
+A dark-fantasy horde survivor you can play in the browser. Built as a better take on *Knight Survivor* / *Knight Survival*: no ads, no energy gates, a real build system, and bosses that actually fight back.
+
+## Play
+
+Clone and serve locally:
+
+```bash
+git clone https://github.com/jasonjaynelson/oathbound.git
+cd oathbound
+./play.sh
+```
+
+Or from the project folder:
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1
+```
+
+Then open `http://127.0.0.1:8765/`.
+
+**Controls**
+
+| Input | Action |
+|---|---|
+| WASD / arrows | Move |
+| Shift or Space | Dash (brief invulnerability) |
+| Mouse | Aim fire and ice |
+| 1 / 2 / 3 | Pick a blessing |
+| Esc / P | Pause |
+
+## What this improves
+
+The games sold as Knight Survivor / Knight Survival are thin Vampire Survivors clones: ads, empty arenas, geometric slimes, and a knight who somehow shops for a flamethrower. Oathbound keeps the compulsive loop and replaces the rest.
+
+- Cohesive last-knight fantasy instead of guns in plate armor
+- Auto-firing weapons **and** a dash with i-frames
+- Level-up blessings plus a shop after each mid-boss
+- Eight weapons, eight virtues, eight evolutions
+- Distinct enemy jobs (seek, dive, kite, charge, slam) and three staged bosses
+- Three knights with a gold meta and permanent reliquary upgrades
+- No ads, no stamina, no real-money shop
+
+Survive 8:30, kill the Dawn Eater, see the sun.
+
+## Knights
+
+- **Sir Aldric** — balanced, starts with Oathblade
+- **Sister Mara** — 500 gold, faster, Holy Cross
+- **The Hollow** — 1200 gold, huge vitality, Blood Well
+
+Pair a weapon with the matching virtue at rank 6+ to evolve it (Oathblade + Rage = Crown of Blades, and so on).

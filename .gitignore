@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+assets/sprites/_tile_check.png
+/tmp/

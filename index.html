@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Oathbound — Last Vigil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="top">
+      <div class="stat"><div class="k">Vigil</div><div class="v" id="hud-time">00:00</div></div>
+      <div class="stat"><div class="k">Slain</div><div class="v" id="hud-kills">0</div></div>
+      <div class="stat"><div class="k">Gold</div><div class="v" id="hud-gold">0</div></div>
+      <div class="stat"><div class="k">Level</div><div class="v" id="hud-lv">1</div></div>
+    </div>
+    <div id="banner"></div>
+    <div id="dash-pip"><i id="dash-fill"></i></div>
+    <div class="bottom">
+      <div class="bars">
+        <div class="bar hp"><i id="hp-fill"></i><div class="lbl" id="hp-lbl">100 / 100</div></div>
+        <div class="bar xp"><i id="xp-fill"></i><div class="lbl" id="xp-lbl">0 / 10</div></div>
+      </div>
+      <div id="weapon-dock"></div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="layer show" id="title-screen">
+      <div class="brand">
+        <h1><span>Last Vigil</span>OATHBOUND</h1>
+        <p class="tag">Hold the ruined keep until dawn</p>
+      </div>
+      <div class="menu-col">
+        <button class="btn primary" id="btn-play">Begin Vigil</button>
+        <button class="btn" id="btn-chars">Knights</button>
+        <button class="btn" id="btn-meta">Reliquary</button>
+        <button class="btn" id="btn-help">How to Fight</button>
+      </div>
+      <p class="tiny" id="title-meta">Gold 0 · Best 00:00</p>
+    </div>
+
+    <div class="layer" id="chars">
+      <div class="panel">
+        <h2>Choose Your Knight</h2>
+        <div class="row" id="char-list"></div>
+        <div class="row" style="margin-top:1rem">
+          <button class="btn" id="chars-back">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="meta">
+      <div class="panel" style="min-width:min(560px,92vw)">
+        <h2>Reliquary</h2>
+        <p class="tiny" id="meta-gold" style="margin-top:0">Permanent gold: 0</p>
+        <div id="meta-list"></div>
+        <div class="row" style="margin-top:1rem">
+          <button class="btn" id="meta-back">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="help">
+      <div class="panel" style="min-width:min(520px,92vw)">
+        <h2>How to Fight</h2>
+        <div class="help-grid">
+          <b>WASD / Arrows</b><span>Move through the keep</span>
+          <b>Shift or Space</b><span>Dash — brief invulnerability</span>
+          <b>Mouse</b><span>Aim directional weapons</span>
+          <b>Esc / P</b><span>Pause</span>
+          <b>1 2 3</b><span>Pick a level-up blessing</span>
+        </div>
+        <p style="color:var(--ash);line-height:1.45;margin-bottom:1rem">
+          Weapons strike on their own. Collect pale souls to level up and choose blessings.
+          Pair a weapon with the right virtue to evolve it. Bosses arrive at 3:00 and 6:00.
+          At 8:30 the Dawn Eater comes. Slay it to see the sun.
+        </p>
+        <div class="row"><button class="btn" id="help-back">Back</button></div>
+      </div>
+    </div>
+
+    <div class="layer" id="levelup">
+      <div class="panel">
+        <h2>A Blessing</h2>
+        <div class="cards" id="level-cards"></div>
+      </div>
+    </div>
+
+    <div class="layer" id="shop">
+      <div class="panel">
+        <h2>Wandering Armorer</h2>
+        <p class="tiny" id="shop-gold" style="margin-top:0">Gold 0</p>
+        <div class="row" id="shop-list"></div>
+        <div class="row" style="margin-top:1rem">
+          <button class="btn primary" id="shop-leave">Return to the fight</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="pause">
+      <div class="panel" style="min-width:280px">
+        <h2>Paused</h2>
+        <div class="menu-col">
+          <button class="btn primary" id="pause-resume">Resume</button>
+          <button class="btn" id="pause-quit">Abandon Vigil</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="end">
+      <div class="panel" style="min-width:min(420px,92vw)">
+        <div class="big" id="end-title">Fallen</div>
+        <div class="sub" id="end-sub">The keep is lost.</div>
+        <div class="stats-grid" id="end-stats"></div>
+        <div class="row">
+          <button class="btn primary" id="end-again">Another Vigil</button>
+          <button class="btn" id="end-menu">Main Hall</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="gold-chip"></div>
+  <script src="js/game.js"></script>
+</body>
+</html>
