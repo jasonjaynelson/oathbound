@@ -19,6 +19,10 @@
       <div class="stat"><div class="k">Gold</div><div class="v" id="hud-gold">0</div></div>
       <div class="stat"><div class="k">Level</div><div class="v" id="hud-lv">1</div></div>
     </div>
+    <div id="boss-wrap">
+      <div class="k" id="boss-name"></div>
+      <div class="bar"><i id="boss-fill"></i></div>
+    </div>
     <div id="banner"></div>
     <div id="dash-pip"><i id="dash-fill"></i></div>
     <div class="bottom">
@@ -41,7 +45,9 @@
         <button class="btn" id="btn-chars">Knights</button>
         <button class="btn" id="btn-meta">Reliquary</button>
         <button class="btn" id="btn-help">How to Fight</button>
+        <button class="btn" id="btn-oath">Red Hour: Off</button>
       </div>
+      <p class="tiny" id="oath-note"></p>
       <p class="tiny" id="title-meta">Gold 0 · Best 00:00</p>
     </div>
 
@@ -71,15 +77,16 @@
         <h2>How to Fight</h2>
         <div class="help-grid">
           <b>WASD / Arrows</b><span>Move through the keep</span>
-          <b>Shift or Space</b><span>Dash — brief invulnerability</span>
+          <b>Shift or Space</b><span>Dash along your last direction</span>
           <b>Mouse</b><span>Aim directional weapons</span>
           <b>Esc / P</b><span>Pause</span>
           <b>1 2 3</b><span>Pick a level-up blessing</span>
         </div>
         <p style="color:var(--ash);line-height:1.45;margin-bottom:1rem">
-          Weapons strike on their own. Collect pale souls to level up and choose blessings.
-          Pair a weapon with the right virtue to evolve it. Bosses arrive at 3:00 and 6:00.
-          At 8:30 the Dawn Eater comes. Slay it to see the sun.
+          Weapons strike on their own. The dead come through the gates, and the oath holds you in the courtyard.
+          Collect pale souls to level up. A weapon's blessing names the virtue that evolves it at rank 6.
+          Bosses arrive at 3:00 and 6:00. At 8:30 the Dawn Eater comes. Slay it to see the sun.
+          Swear the Red Hour for faster gates, early elites, no field rations, and a richer dawn.
         </p>
         <div class="row"><button class="btn" id="help-back">Back</button></div>
       </div>

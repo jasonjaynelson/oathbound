@@ -311,6 +311,41 @@ button.btn:disabled {
 }
 #banner.show { opacity: 1; }
 
+#boss-wrap {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, 72vw);
+  display: none;
+  text-align: center;
+}
+#boss-wrap.show { display: block; }
+#boss-wrap .k {
+  font-family: Cinzel, Palatino, Georgia, serif;
+  letter-spacing: .2em;
+  font-size: .72rem;
+  color: var(--gold);
+  margin-bottom: 4px;
+  text-shadow: 0 2px 8px #000;
+}
+#boss-wrap .bar { height: 11px; margin-top: 0; }
+#boss-wrap .bar > i {
+  width: 100%;
+  background: linear-gradient(90deg, #6a1818, #e0b15a);
+}
+
+button.btn.sworn {
+  background: linear-gradient(180deg, #5a1824, #2a0c12);
+  border-color: #c45;
+  color: #f3d2c8;
+}
+#oath-note {
+  max-width: 440px;
+  line-height: 1.4;
+  margin-top: .85rem;
+}
+
 /* —— Cards —— */
 #levelup, #shop, #pause, #end, #meta, #help, #chars {
   background: rgba(6,4,8,.62);
