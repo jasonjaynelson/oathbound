@@ -24,7 +24,7 @@
 <body>
   <header>
     <h1>OATHBOUND · Art Gallery</h1>
-    <p>The knights and creatures of the Last Vigil.</p>
+    <p>The champions and creatures of the Last Vigil.</p>
     <nav>
       <label>Motion <select id="clip"><option>idle</option><option selected>run</option><option>dash</option><option>hurt</option><option>death</option><option>tel</option><option>go</option><option>slam</option><option>cast</option></select></label>
       <label>Facing <select id="direction"><option>south</option><option>east</option><option>north</option><option>west</option></select></label>
@@ -34,7 +34,7 @@
   </header>
   <main id="gallery"></main>
   <script>
-    const names = { aldric: 'Sir Aldric', mara: 'Sister Mara', hollow: 'The Hollow', skeleton: 'Skeleton', slime: 'Slime', bat: 'Bat', wight: 'Wight', shade: 'Shade', golem: 'Golem', duke: 'The Wailing Duke', hydra: 'Bone Hydra', dawneater: 'The Dawn Eater' };
+    const names = { aldric: 'Sir Aldric', mara: 'Lady Mara — Veilweaver', hollow: 'The Hollow', skeleton: 'Skeleton', slime: 'Slime', bat: 'Bat', wight: 'Wight', shade: 'Shade', golem: 'Golem', duke: 'The Wailing Duke', hydra: 'Bone Hydra', dawneater: 'The Dawn Eater' };
     let time = 0, last = 0, paused = false;
     const cards = [];
     document.getElementById('pause').onclick = event => { paused = !paused; event.target.textContent = paused ? 'Resume' : 'Pause'; };

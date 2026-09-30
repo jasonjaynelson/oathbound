@@ -26,6 +26,7 @@
     <div id="banner"></div>
     <div id="dash-pip"><i id="dash-fill"></i></div>
     <div id="buff-row"></div>
+    <div id="exploration"><div id="hud-region">Central Courtyard</div><div id="objective"></div></div>
     <div class="bottom">
       <div class="bars">
         <div class="bar hp"><i id="hp-fill"></i><div class="lbl" id="hp-lbl">100 / 100</div></div>
@@ -43,18 +44,21 @@
       </div>
       <div class="menu-col">
         <button class="btn primary" id="btn-play">Begin Vigil</button>
-        <button class="btn" id="btn-chars">Knights</button>
+        <button class="btn" id="btn-chars">Champions</button>
         <button class="btn" id="btn-meta">Reliquary</button>
+        <button class="btn" id="btn-challenges">Challenges &amp; Oaths</button>
+        <button class="btn" id="btn-settings">Settings</button>
         <button class="btn" id="btn-help">How to Fight</button>
         <button class="btn" id="btn-oath">Red Hour: Off</button>
       </div>
+      <p class="tiny" id="title-modifier"></p>
       <p class="tiny" id="oath-note"></p>
       <p class="tiny" id="title-meta">Gold 0 · Best 00:00</p>
     </div>
 
     <div class="layer" id="chars">
       <div class="panel">
-        <h2>Choose Your Knight</h2>
+        <h2>Choose Your Champion</h2>
         <div class="row" id="char-list"></div>
         <div class="row" style="margin-top:1rem">
           <button class="btn" id="chars-back">Back</button>
@@ -80,6 +84,8 @@
           <b>WASD / Arrows</b><span>Move through the keep</span>
           <b>Shift or Space</b><span>Dash along your last direction</span>
           <b>Mouse</b><span>Aim directional weapons</span>
+          <b>E</b><span>Start a nearby landmark encounter</span>
+          <b>R (blessing)</b><span>Use a limited reroll</span>
           <b>Esc / P</b><span>Pause</span>
           <b>1 2 3</b><span>Pick a level-up blessing</span>
           <b>Arrows + Enter</b><span>Choose and accept a blessing</span>
@@ -88,6 +94,7 @@
           Weapons strike on their own. Explore the sprawling courtyard as the camera follows you.
           The dead approach from beyond your view and surge through the gates.
           Lit shrines stand around the central court and outer grounds. Walk onto one. It goes dark, then kindles again.
+          The minimap marks unexplored landmarks with ?. Discover the chapel, graveyard, armory, and breached gate. Press E near a landmark to accept its optional challenge and earn a build blessing plus 50 gold.
           Collect pale souls to level up. A weapon's blessing names the virtue that evolves it at rank 6.
           Bosses arrive at 3:00 and 6:00. At 8:30 the Dawn Eater comes. Slay it to see the sun.
           Swear the Red Hour for faster gates, early elites, no field rations, and a richer dawn.
@@ -99,7 +106,9 @@
     <div class="layer" id="levelup">
       <div class="panel">
         <h2>A Blessing</h2>
+        <p class="panel-note" id="blessing-source"></p>
         <div class="cards" id="level-cards"></div>
+        <div class="row reroll-row"><button class="btn" id="btn-reroll">R · Reroll</button></div>
         <p class="tiny">Arrows to choose · Enter to accept · 1–3 or click to pick</p>
       </div>
     </div>
@@ -120,16 +129,36 @@
         <h2>Paused</h2>
         <div class="menu-col">
           <button class="btn primary" id="pause-resume">Resume</button>
+          <button class="btn" id="pause-settings">Settings</button>
           <button class="btn" id="pause-quit">Abandon Vigil</button>
         </div>
       </div>
     </div>
 
+    <div class="layer" id="challenges">
+      <div class="panel challenges-panel"><h2>Challenges &amp; Oaths</h2>
+        <p class="panel-note">Challenge rewards are granted once, at the end of a vigil.</p>
+        <div id="challenge-list"></div><h3 class="report-title">Next vigil</h3><div id="modifier-list"></div>
+        <div class="row"><button class="btn" id="challenges-back">Back</button></div>
+      </div>
+    </div>
+    <div class="layer" id="settings">
+      <div class="panel settings-panel"><h2>Settings</h2>
+        <label>Audio volume <input id="setting-volume" type="range" min="0" max="100" /></label>
+        <label><input id="setting-motion" type="checkbox" /> Screen shake</label>
+        <label><input id="setting-numbers" type="checkbox" /> Combat damage numbers</label>
+        <div class="row"><button class="btn" id="settings-back">Back</button></div>
+      </div>
+    </div>
     <div class="layer" id="end">
       <div class="panel" style="min-width:min(420px,92vw)">
         <div class="big" id="end-title">Fallen</div>
         <div class="sub" id="end-sub">The keep is lost.</div>
         <div class="stats-grid" id="end-stats"></div>
+        <p class="panel-note" id="end-cause"></p>
+        <p id="end-rewards"></p>
+        <h3 class="report-title">Damage by weapon</h3>
+        <div id="end-damage"></div>
         <div class="row">
           <button class="btn primary" id="end-again">Another Vigil</button>
           <button class="btn" id="end-menu">Main Hall</button>

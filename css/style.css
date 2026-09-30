@@ -462,3 +462,78 @@ button.btn.sworn {
   color: var(--gold);
   letter-spacing: .08em;
 }
+
+/* Exploration and build clarity */
+#exploration { position:absolute; left:16px; top:86px; max-width:min(310px,45vw); padding:10px 12px; background:rgba(9,10,17,.82); border-left:2px solid var(--gold-dim); }
+#hud-region { color:var(--gold); font-family:Cinzel,Georgia,serif; font-size:12px; margin-bottom:5px; }
+#objective { color:var(--cream); font-size:12px; line-height:1.5; white-space:pre-line; }
+.panel-note { color:var(--ash); text-align:center; font-size:.85rem; margin:0 0 1rem; }
+.preview { color:#b9d8e5; font-size:.78rem; line-height:1.45; border-top:1px solid #49394e; padding-top:.5rem; }
+.recipe { color:var(--gold); font-size:.75rem; line-height:1.4; }
+.reroll-row { margin-top:1rem; }
+.report-title { font-family:Cinzel,Georgia,serif; color:var(--gold); font-size:.95rem; margin:1rem 0 .6rem; }
+#end-rewards { white-space:pre-line; color:var(--ok); font-size:.85rem; line-height:1.5; }
+#end-damage { color:var(--ash); font-size:.8rem; margin-bottom:1rem; }
+.damage-row { display:flex; justify-content:space-between; gap:20px; position:relative; padding:7px 0 10px; }
+.damage-row i { position:absolute; bottom:2px; left:0; height:3px; background:var(--gold-dim); }
+.damage-row b { color:var(--cream); }
+.challenges-panel { width:620px; }
+.challenge-row { padding:10px 0; border-bottom:1px solid #3a3044; }
+.challenge-row b { color:var(--gold); }
+.challenge-row p { color:var(--cream); font-size:.9rem; margin:4px 0; }
+.challenge-row small { color:var(--ash); }
+#modifier-list { display:grid; gap:8px; margin-bottom:1rem; }
+.modifier-card { text-align:left; padding:10px; border:1px solid #564363; background:#1b1422; color:var(--cream); cursor:pointer; }
+.modifier-card span,.modifier-card small { display:block; margin-top:5px; }
+.modifier-card small { color:var(--ash); }
+.modifier-card.chosen { border-color:var(--gold); background:#322436; }
+.modifier-card:disabled { opacity:.5; cursor:default; }
+.settings-panel { min-width:min(380px,90vw); }
+.settings-panel label { display:flex; align-items:center; gap:12px; justify-content:space-between; margin:18px 0; }
+input { accent-color:var(--gold); }
+#settings,#challenges { background:rgba(6,4,8,.75); }
+#title-screen { overflow:auto; padding:20px 0; }
+#title-screen .brand { margin-bottom:1rem; }
+#title-screen .menu-col { gap:.4rem; }
+#title-screen button.btn { padding:.65rem 1.2rem; }
+#title-modifier { margin-top:.6rem; }
+#title-meta { margin-top:.6rem; }
+@media (max-width:650px), (max-height:550px) {
+  #hud .top { left:10px; right:auto; margin:0; padding:6px 9px; gap:.6rem; }
+  #hud .top .stat { min-width:42px; }
+  #hud .top .v { font-size:1rem; }
+  #boss-wrap { top:65px; width:60vw; }
+  #exploration { top:100px; padding:5px 8px; max-width:220px; }
+  #objective { font-size:10px; }
+  #banner { top:35%; font-size:1.3rem; }
+  #title-screen h1 { font-size:2.6rem; }
+  #title-screen .brand { margin-bottom:.5rem; }
+  #title-screen button.btn { padding:.4rem .8rem; font-size:.8rem; }
+  #title-screen p.tag { font-size:.6rem; }
+  #title-screen .tiny { font-size:.68rem; }
+  .card { width:min(220px,75vw); padding:.65rem; }
+  .cards { gap:8px; }
+  #levelup .panel { padding:1rem; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+@media (max-height:550px) and (min-width:700px) {
+  #levelup .panel { padding:.7rem 1rem; }
+  #levelup h2 { font-size:1.1rem; margin-bottom:.45rem; }
+  #levelup .panel-note { margin-bottom:.6rem; font-size:.75rem; }
+  #levelup .card { gap:.3rem; min-height:0; }
+  #levelup .card .ico .relic-icon { width:32px; height:32px; }
+  #levelup .card h3 { font-size:.9rem; }
+  #levelup .card p { font-size:.75rem; }
+  #levelup .preview,#levelup .recipe { font-size:.68rem; }
+  #levelup .reroll-row { margin-top:.5rem; }
+  #levelup .btn { padding:.45rem .8rem; font-size:.75rem; }
+  #levelup .tiny { margin-top:.6rem; font-size:.65rem; }
+}
+@media (max-width:450px) {
+  #hud .top { gap:.3rem; padding:6px; }
+  #hud .top .stat { min-width:32px; }
+  #hud .top .k { font-size:.5rem; }
+  #hud .top .v { font-size:.85rem; }
+  #exploration { max-width:190px; top:145px; }
+}
+.char-card .mage-kit { margin-top:.5rem; color:#d0acf1; font-size:.75rem; line-height:1.5; }

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pack Blender PNG sequences into padded atlases and a browser manifest."""
+import argparse
 import json
 import math
 from pathlib import Path
@@ -9,6 +10,17 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "art" / "build"
 ASSETS = ROOT / "assets"
 manifest = {"version": 1, "generator": "Blender 5.2 / tools/blender/render_assets.py", "actors": {}, "props": {}, "floor": [], "icons": {}, "effects": {}}
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--only", help="Comma-separated actor or icon names, or props/floor/effect names. Preserve all other manifest entries.")
+args = parser.parse_args()
+selected = set(args.only.split(",")) if args.only else None
+if selected:
+    manifest = json.loads((ASSETS / "asset-manifest.json").read_text())
+    missing = [n for n in selected if n not in {"props", "floor"} and not (BUILD / n / "spec.json").exists() and not (BUILD / "icons" / (n + ".png")).exists() and not (BUILD / ("effect_" + n)).exists()]
+    if missing:
+        parser.error("No generated assets for: " + ", ".join(missing))
+    if "floor" in selected:
+        manifest["floor"] = []
 PAD = 2
 
 
@@ -47,7 +59,8 @@ def pack_frames(name, spec):
         "poster": clips["idle"]["south" if "south" in spec["directions"] else "east"][0],
     }
     poster = frames[0]["file"]
-    portrait = Image.open(BUILD / name / poster).convert("RGBA")
+    portrait_file = BUILD / name / "portrait.png"
+    portrait = Image.open(portrait_file if portrait_file.exists() else BUILD / name / poster).convert("RGBA")
     portrait = portrait.crop(portrait.getchannel("A").getbbox())
     portrait.save(ASSETS / "atlases" / (name + "-portrait.png"), optimize=True)
     manifest["actors"][name]["portrait"] = f"assets/atlases/{name}-portrait.png"
@@ -55,12 +68,14 @@ def pack_frames(name, spec):
 
 
 for file in sorted(BUILD.glob("*/spec.json")):
+    if selected and file.parent.name not in selected:
+        continue
     spec = json.loads(file.read_text())
     if "frames" in spec:
         pack_frames(file.parent.name, spec)
 
 props_spec = BUILD / "props" / "spec.json"
-if props_spec.exists():
+if props_spec.exists() and (not selected or "props" in selected):
     spec = json.loads(props_spec.read_text())
     pitch = spec["size"] + PAD * 2
     items = spec["items"]
@@ -76,12 +91,16 @@ if props_spec.exists():
     manifest["propsSrc"] = "assets/environment/props.png"
 
 for file in sorted((BUILD / "floor").glob("floor_*.png")):
+    if selected and "floor" not in selected:
+        continue
     target = ASSETS / "environment" / file.name
     target.parent.mkdir(parents=True, exist_ok=True)
     Image.open(file).convert("RGB").save(target, optimize=True)
     manifest["floor"].append(str(target.relative_to(ROOT)))
 
 for file in sorted((BUILD / "icons").glob("*.png")):
+    if selected and file.stem not in selected:
+        continue
     target = ASSETS / "icons" / file.name
     target.parent.mkdir(parents=True, exist_ok=True)
     im = Image.open(file).convert("RGBA")
@@ -95,6 +114,8 @@ for file in sorted((BUILD / "icons").glob("*.png")):
     manifest["icons"][file.stem] = str(target.relative_to(ROOT))
 
 for folder in sorted(BUILD.glob("effect_*")):
+    if selected and folder.name.removeprefix("effect_") not in selected:
+        continue
     images = [Image.open(file).convert("RGBA") for file in sorted(folder.glob("*.png"))]
     if not images:
         continue

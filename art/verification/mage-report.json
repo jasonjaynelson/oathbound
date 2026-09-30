@@ -1,0 +1,35 @@
+{
+  "status": "PASS",
+  "spells": {
+    "targetDamage": 16,
+    "splashDamage": 8,
+    "source": 24
+  },
+  "passive": {
+    "cap": 3,
+    "resets": true
+  },
+  "dash": {
+    "stationary": true,
+    "bind": 0.8,
+    "duration": 2.5
+  },
+  "evolution": {
+    "curses": 3,
+    "blast": 98,
+    "preview": "Base stats · damage 30 → 33 · curses 2 → 3 · interval 0.9s → 0.9s · blast 48u → 51u · burstDamage 18 → 20. Virtues and buffs apply afterward."
+  },
+  "art": {
+    "directions": 4,
+    "clips": [
+      "idle",
+      "run",
+      "dash",
+      "hurt",
+      "death",
+      "cast"
+    ],
+    "sourceSize": 192
+  },
+  "browserErrors": []
+}

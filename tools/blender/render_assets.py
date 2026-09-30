@@ -233,7 +233,124 @@ def shield(parent, loc):
     return pivot
 
 
+def gown_surface(name, rings, mat, parent, neckline=False, flutes=.025):
+    """Smooth elliptical dress/sleeve surface, with a continuous editable mesh."""
+    vertices, faces = [], []
+    count = 48
+    for j, (z, rx, ry) in enumerate(rings):
+        for i in range(count):
+            a = TAU * i / count
+            ripple = 1 + flutes * math.cos(a * 12) * (1 - j / max(1, len(rings)))
+            height = z
+            if neckline and j == len(rings) - 1:
+                # Cut the fabric into a deep V in front, keeping shoulders covered.
+                front = max(0, -math.sin(a))
+                height -= .30 * front ** 8
+            vertices.append((rx * math.cos(a) * ripple, ry * math.sin(a) * ripple, height))
+            if j:
+                prev, here = (j - 1) * count + i, j * count + i
+                faces.append((prev, (j - 1) * count + (i + 1) % count, j * count + (i + 1) % count, here))
+    obj = mesh(name, vertices, faces, mat, parent)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
+def strand(name, points, radius, mat, parent):
+    curve = bpy.data.curves.new(name, "CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 12
+    curve.bevel_depth = radius
+    curve.bevel_resolution = 3
+    spline = curve.splines.new("BEZIER")
+    spline.bezier_points.add(len(points) - 1)
+    for point, co in zip(spline.bezier_points, points):
+        point.co = co
+        point.handle_left_type = point.handle_right_type = "AUTO"
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
+    obj.parent = parent
+    curve.materials.append(M[mat])
+    return obj
+
+
+def gothic_mage():
+    material("midnight_satin", (.019, .014, .032), .15, .30)
+    material("velvet_trim", (.038, .012, .055), .12, .48)
+    material("raven_hair", (.012, .010, .021), .18, .24)
+    material("hair_sheen", (.045, .027, .070), .2, .34)
+    material("moon_skin", (.79, .63, .60), 0, .58)
+    material("lip_wine", (.25, .006, .028), 0, .37)
+    material("eye_kohl", (.009, .006, .018))
+    material("silver", (.52, .56, .66), .8, .26)
+    material("amethyst", (.46, .08, .70), .3, .22, .8)
+    root = empty("mara")
+    root["character"] = "Lady Mara — adult gothic mage"
+    root["design"] = "Fitted midnight gown, V neckline, bell sleeves, raven hair, crescent staff"
+    body = empty("Body", (0, 0, 1.05), root)
+    skirt = empty("Gown sway", (0, 0, 0), body)
+    gown_surface("Floor-length mermaid gown", [(-1.0,.49,.34),(-.88,.48,.32),(-.67,.37,.25),(-.35,.26,.17),(-.04,.32,.19),(.15,.29,.18),(.32,.21,.14),(.48,.24,.16),(.63,.31,.20),(.78,.33,.17)], "midnight_satin", skirt, True)
+    # Pale décolletage is enclosed by the continuous dress neckline.
+    sphere("Neckline skin", (0,-.01,.67), (.23,.138,.20), "moon_skin", body, 32)
+    sphere("Collarbones", (0,-.01,.72), (.29,.138,.13), "moon_skin", body, 32)
+    sphere("Neck", (0,0,.91), (.074,.07,.19), "moon_skin", body, 24)
+    face = sphere("Mature face", (0,-.024,1.15), (.165,.138,.235), "moon_skin", body, 40)
+    sphere("Chin", (0,-.058,1.00), (.115,.10,.095), "moon_skin", body, 24)
+    sphere("Nose bridge", (0,-.151,1.145), (.022,.026,.065), "moon_skin", body, 24)
+    sphere("Nose tip", (0,-.173,1.10), (.03,.028,.026), "moon_skin", body, 24)
+    sphere("Wine lips", (0,-.151,1.04), (.055,.018,.018), "lip_wine", body, 24)
+    for side in [-1,1]:
+        eye = sphere("Almond eye", (side*.067,-.144,1.185), (.039,.013,.018), "eye_kohl", body, 24)
+        eye.rotation_euler.y = side * -.10
+        sphere("Violet iris", (side*.069,-.157,1.184), (.013,.006,.013), "amethyst", body, 20)
+        strand("Arched brow", [(side*.033,-.145,1.222),(side*.067,-.147,1.237),(side*.102,-.13,1.225)], .007, "raven_hair", body)
+    # The front scalp is left open; a center part and long locks frame the face.
+    sphere("Hair crown", (0,.013,1.32), (.174,.14,.115), "raven_hair", body, 32)
+    hair = empty("Hair sway", (0,.11,1.22), body)
+    gown_surface("Long hair curtain", [(-1.30,.23,.115),(-1.18,.24,.13),(-.84,.20,.135),(-.48,.17,.12),(-.13,.17,.11),(.08,.15,.10)], "raven_hair", hair, flutes=.045)
+    for side in [-1,1]:
+        strand("Face-framing lock", [(side*.015,-.035,1.42),(side*.148,-.071,1.29),(side*.172,-.03,1.07),(side*.20,-.15,.66),(side*.23,-.16,.36),(side*.27,-.15,.05)], .039, "raven_hair", body)
+        strand("Hair violet rim", [(side*.12,.21,1.31),(side*.18,.24,.83),(side*.23,.23,.05)], .009, "hair_sheen", body)
+    cylinder("Velvet choker", (0,0,.91), .080, .038, "velvet_trim", body, 32)
+    sphere("Choker amethyst", (0,-.083,.91), (.03,.016,.04), "amethyst", body, 24)
+    # Silver neckline stitches and a pointed waist clasp read at gameplay size.
+    for side in [-1,1]:
+        strand("Silver neckline piping", [(side*.28,-.10,.77),(side*.14,-.17,.66),(0,-.18,.48)], .008, "silver", skirt)
+    sphere("Waist jewel", (0,-.151,.30), (.033,.022,.07), "amethyst", skirt, 24)
+    for i in range(12):
+        a = TAU*i/12
+        strand("Gown trailing hem", [(.40*math.cos(a),.28*math.sin(a),-.80),(.48*math.cos(a),.33*math.sin(a),-1.0),(.57*math.cos(a),.40*math.sin(a),-1.035)], .020, "velvet_trim", skirt)
+    arms=[]
+    for side in [-1,1]:
+        arm=empty("Arm L" if side<0 else "Arm R", (side*.33,0,.74), body)
+        arms.append(arm)
+        sleeve=gown_surface("Bell sleeve", [(-.61,.18,.155),(-.48,.13,.11),(-.34,.075,.07),(-.13,.085,.075),(0,.105,.10)], "midnight_satin", arm, flutes=.05)
+        sleeve.rotation_euler.y = side*-.15
+        sphere("Pale hand", (side*.08,-.032,-.59), (.058,.048,.085), "moon_skin", arm, 24)
+        for i in range(3):
+            strand("Long casting fingers", [(side*.065+(i-1)*.025,-.065,-.60),(side*.07+(i-1)*.025,-.07,-.70)], .012, "moon_skin", arm)
+        cylinder("Silver cuff", (side*.065,-.02,-.57), .064, .028, "silver", arm, 24)
+    held=empty("Crescent staff", (.12,-.09,-.58), arms[1])
+    cylinder("Black staff shaft", (0,0,.15), .026, 1.92, "raven_hair", held, 24)
+    cylinder("Staff silver grip", (0,0,.02), .031, .25, "silver", held, 24)
+    crescent=[]
+    for i in range(25):
+        a=math.radians(45+270*i/24)
+        crescent.append((.19*math.cos(a),0,1.12+.19*math.sin(a)))
+    strand("Silver crescent", crescent, .025, "silver", held)
+    sphere("Floating violet crystal", (.025,-.008,1.12), (.071,.062,.11), "amethyst", held, 24)
+    for z in [-.6,.6,.92]:
+        cylinder("Staff silver band", (0,0,z), .032,.028,"silver",held,24)
+    # Invisible joint pivots retain the hero export contract; gown movement replaces leg swinging.
+    legs=[empty("Leg L",(-.13,0,-.50),body),empty("Leg R",(.13,0,-.50),body)]
+    sphere("Black heel L",(-.13,-.07,-.97),(.075,.11,.06),"raven_hair",body)
+    sphere("Black heel R",(.13,-.07,-.97),(.075,.11,.06),"raven_hair",body)
+    return {"root":root,"body":body,"arms":arms,"legs":legs,"cape":skirt,"hair":hair,"weapon":held,"base":body.location.copy()}
+
+
 def humanoid(name):
+    if name == "mara":
+        return gothic_mage()
     root = empty(name)
     body = empty("Body", (0, 0, 1.02), root)
     skeleton = name in ("skeleton", "wight")
@@ -483,6 +600,24 @@ def pose(rig, clip, phase, direction):
             body.rotation_euler.x = 0
             body.rotation_euler.y = phase * .15
             body.scale.z = 1 - phase * .48
+    if name == "mara":
+        # Smooth glide, hair lag, and a planted hem instead of armored running.
+        body.rotation_euler.y *= .3
+        if cape:
+            cape.rotation_euler = (.04 * s if moving else .012 * s, .025 * s, 0)
+        hair = rig["hair"]
+        hair.rotation_euler = (-.06 + s*.04 if moving else s*.015, s*.035, 0)
+        if clip == "dash":
+            body.rotation_euler.x = -.10
+            cape.rotation_euler.x = -.11
+            hair.rotation_euler.x = -.22
+        elif clip == "cast":
+            for i, arm in enumerate(rig["arms"]):
+                arm.rotation_euler.x = -.25 - math.sin(phase*math.pi)*.65
+                arm.rotation_euler.y = (.25 + math.sin(phase*math.pi)*.18) * (-1 if i else 1)
+        elif clip == "death":
+            cape.rotation_euler.x = .12 * phase
+            hair.rotation_euler.x = .25 * phase
     bpy.context.view_layer.update()
 
 
@@ -495,12 +630,12 @@ BOSS_CLIPS = {"idle": (4, 1.2, True), "run": (6, 1, True), "tel": (4, .55, False
 def render_actor(name):
     hero = name in ("aldric", "mara", "hollow")
     boss = name in ("duke", "hydra", "dawneater")
-    size = 192 if boss else 128 if hero else 96
+    size = 192 if boss or name == "mara" else 128 if hero else 96
     ortho = 6.0 if boss else 3.4 if hero or name in ("skeleton", "wight", "golem") else 3.0 if name == "shade" else 2.7
     anchor_y = .76 if boss else .84
     scene = setup(size, ortho, anchor_y=anchor_y)
     rig = humanoid(name) if hero or name in ("skeleton", "wight", "duke") else creature(name)
-    clips = HERO_CLIPS if hero else BOSS_CLIPS if boss else ENEMY_CLIPS
+    clips = {**HERO_CLIPS, "cast": (6, .45, False)} if name == "mara" else HERO_CLIPS if hero else BOSS_CLIPS if boss else ENEMY_CLIPS
     directions = {"south": 0, "east": math.pi / 2, "north": math.pi, "west": -math.pi / 2} if hero else {"east": .65, "west": -.65}
     dest = BUILD / name
     dest.mkdir(exist_ok=True)
@@ -512,7 +647,7 @@ def render_actor(name):
         for i in range(count):
             phase = i / count if loop else i / max(1, count - 1)
             pose(rig, clip, phase, 0)
-            for obj in [rig["root"], rig["body"], *rig["arms"], *rig["legs"], *([rig["cape"]] if rig["cape"] else [])]:
+            for obj in [rig["root"], rig["body"], *rig["arms"], *rig["legs"], *([rig["cape"]] if rig["cape"] else []), *([rig["hair"]] if "hair" in rig else [])]:
                 for prop in ["location", "rotation_euler", "scale"]:
                     obj.keyframe_insert(data_path=prop, frame=timeline)
             timeline += 1
@@ -648,7 +783,16 @@ def render_floor():
 
 def icon(name):
     root = empty(name)
-    if name in ("oathblade", "crown", "firebrand", "dragon", "might", "rage"):
+    if name in ("hex", "nightbloom"):
+        material("silver", (.52,.56,.66), .8, .26)
+        material("amethyst", (.46,.08,.70), .3, .22, .8)
+        for j in range(3 if name == "nightbloom" else 1):
+            cx = (j-1)*.30 if name == "nightbloom" else 0
+            z = .78 + (.10 if j==1 else 0)
+            points = [(cx+.38*math.cos(math.radians(45+i*270/24)),0,z+.38*math.sin(math.radians(45+i*270/24))) for i in range(25)]
+            strand("Crescent curse",points,.047,"silver",root)
+            sphere("Curse crystal",(cx+.05,-.07,z),(.095,.075,.17),"amethyst",root,24)
+    elif name in ("oathblade", "crown", "firebrand", "dragon", "might", "rage"):
         sword(root, (0, 0, .85))
         root.rotation_euler.y = -.5
         if name in ("crown", "dragon", "rage"):
@@ -698,9 +842,11 @@ def icon(name):
 
 
 def render_icons():
-    names = ["oathblade", "holy", "firebrand", "frost", "storm", "thorn", "bloodwell", "grave",
+    names = ["hex", "nightbloom", "oathblade", "holy", "firebrand", "frost", "storm", "thorn", "bloodwell", "grave",
              "crown", "judgment", "dragon", "glacier", "tempest", "worldthorn", "crimson", "soulstorm",
              "might", "rage", "vitality", "swift", "focus", "faith", "wrath", "magnet", "xp", "gold", "meat", "chest", "bone"]
+    if "all" not in SELECTED and "icons" not in SELECTED:
+        names = [n for n in names if n in SELECTED]
     dest = BUILD / "icons"; dest.mkdir(exist_ok=True)
     for name in names:
         scene = setup(96, 2.05)
@@ -710,7 +856,8 @@ def render_icons():
         if opts.force or not Path(scene.render.filepath).exists():
             bpy.ops.render.render(write_still=True)
         bpy.ops.wm.save_as_mainfile(filepath=str(SOURCES / ("icon_" + name + ".blend")))
-    bpy.ops.wm.save_as_mainfile(filepath=str(SOURCES / "icon_studio.blend"))
+    if "all" in SELECTED or "icons" in SELECTED:
+        bpy.ops.wm.save_as_mainfile(filepath=str(SOURCES / "icon_studio.blend"))
     print("ICONS_DONE", len(names), flush=True)
 
 
@@ -758,7 +905,7 @@ if "all" in SELECTED or any(n in SELECTED for n in ["props", "pillar", "shrine"]
     render_props()
 if "all" in SELECTED or "floor" in SELECTED:
     render_floor()
-if "all" in SELECTED or "icons" in SELECTED:
+if "all" in SELECTED or any(n in SELECTED for n in ["icons", "hex", "nightbloom"]):
     render_icons()
 if "all" in SELECTED or "effects" in SELECTED:
     render_effects()

@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "migration": {
+    "gold": 321,
+    "selected": "mara",
+    "unlocked": [
+      "aldric",
+      "mara"
+    ],
+    "challenges": [],
+    "volume": 0.65
+  },
+  "exploration": [
+    {
+      "id": "chapel",
+      "state": "complete",
+      "discovered": true
+    },
+    {
+      "id": "graveyard",
+      "state": "complete",
+      "discovered": true
+    },
+    {
+      "id": "armory",
+      "state": "complete",
+      "discovered": true
+    },
+    {
+      "id": "gate",
+      "state": "complete",
+      "discovered": true
+    }
+  ],
+  "combat": {
+    "holy": 152,
+    "dash": 10,
+    "preview": "Base stats · damage 12 → 15 · blades 3 → 4 · radius 58u → 62u. Virtues and buffs apply afterward."
+  },
+  "challenges": {
+    "awards": [
+      "warden",
+      "explorer",
+      "smith"
+    ],
+    "hp": 106,
+    "speed": 216.2,
+    "reward": 125
+  },
+  "layout": {
+    "fits": true,
+    "scroll": true
+  },
+  "browserErrors": []
+}

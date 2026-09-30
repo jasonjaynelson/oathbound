@@ -3,37 +3,37 @@
   "scenarios": [
     {
       "enemies": 100,
-      "renderMedianMs": 2.5,
-      "renderP95Ms": 3.4,
-      "updateAndRenderMedianMs": 3.8,
-      "updateAndRenderP95Ms": 5.6
+      "renderMedianMs": 3.4,
+      "renderP95Ms": 8.4,
+      "updateAndRenderMedianMs": 4.4,
+      "updateAndRenderP95Ms": 6.5
     },
     {
       "enemies": 340,
-      "renderMedianMs": 3.8,
-      "renderP95Ms": 5.8,
-      "updateAndRenderMedianMs": 7,
-      "updateAndRenderP95Ms": 11.5
+      "renderMedianMs": 4.2,
+      "renderP95Ms": 5.7,
+      "updateAndRenderMedianMs": 7.6,
+      "updateAndRenderP95Ms": 10.7
     }
   ],
   "selfTest": "PASS",
   "art": {
     "ready": true,
     "actors": [
-      "aldric",
       "slime",
-      "skeleton",
+      "aldric",
       "bat",
+      "skeleton",
+      "shade",
       "wight",
       "golem",
       "duke",
-      "shade",
-      "hydra",
       "dawneater",
-      "mara",
-      "hollow"
+      "hollow",
+      "hydra",
+      "mara"
     ],
-    "decodedBytes": 36130656
+    "decodedBytes": 45173984
   },
   "knightDash": "PASS",
   "mechanics": {
