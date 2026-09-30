@@ -1,0 +1,52 @@
+{
+  "version": "blender",
+  "scenarios": [
+    {
+      "enemies": 100,
+      "renderMedianMs": 2.5,
+      "renderP95Ms": 3.4,
+      "updateAndRenderMedianMs": 3.8,
+      "updateAndRenderP95Ms": 5.6
+    },
+    {
+      "enemies": 340,
+      "renderMedianMs": 3.8,
+      "renderP95Ms": 5.8,
+      "updateAndRenderMedianMs": 7,
+      "updateAndRenderP95Ms": 11.5
+    }
+  ],
+  "selfTest": "PASS",
+  "art": {
+    "ready": true,
+    "actors": [
+      "aldric",
+      "slime",
+      "skeleton",
+      "bat",
+      "wight",
+      "golem",
+      "duke",
+      "shade",
+      "hydra",
+      "dawneater",
+      "mara",
+      "hollow"
+    ],
+    "decodedBytes": 36130656
+  },
+  "knightDash": "PASS",
+  "mechanics": {
+    "hydraWarning": true,
+    "hydraLunge": true,
+    "hydraSplit": true,
+    "dukePhase": true,
+    "meteor": true,
+    "eaterPhase": true,
+    "shrine": true
+  },
+  "gallery": "PASS",
+  "missingAtlasFallback": "PASS",
+  "browserErrors": [],
+  "measurement": "Headless Chromium, 1280x720, DPR 1. JavaScript frame submission cost; not GPU completion time or a real-display FPS benchmark."
+}

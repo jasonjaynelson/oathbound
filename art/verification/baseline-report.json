@@ -1,0 +1,22 @@
+{
+  "version": "baseline",
+  "scenarios": [
+    {
+      "enemies": 100,
+      "renderMedianMs": 2.3,
+      "renderP95Ms": 3.2,
+      "updateAndRenderMedianMs": 3.3,
+      "updateAndRenderP95Ms": 4.7
+    },
+    {
+      "enemies": 340,
+      "renderMedianMs": 3.8,
+      "renderP95Ms": 6.4,
+      "updateAndRenderMedianMs": 6.2,
+      "updateAndRenderP95Ms": 9.3
+    }
+  ],
+  "selfTest": "PASS",
+  "browserErrors": [],
+  "measurement": "Headless Chromium, 1280x720, DPR 1. JavaScript frame submission cost; not GPU completion time or a real-display FPS benchmark."
+}

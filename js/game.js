@@ -7,6 +7,8 @@
   const CELL = 88;
   const RUN_DAWN = 510; // Dawn Eater at 8:30
   const SAVE_KEY = "oathbound_v1";
+  const ART = window.OathArt;
+  let artTime = 0;
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -318,12 +320,13 @@
     "shade", "golem", "duke", "hydra", "dawneater", "ground",
   ];
   function loadImages() {
-    return Promise.all(IMG_NAMES.map((n) => new Promise((res) => {
+    const originals = Promise.all(IMG_NAMES.map((n) => new Promise((res) => {
       const im = new Image();
       im.onload = () => { IM[n] = im; res(); };
       im.onerror = () => { IM[n] = null; res(); };
       im.src = "assets/sprites/" + (n === "ground" ? "ground.png" : n + ".png");
     })));
+    return Promise.all([originals, ART ? ART.init(save.selected || "aldric") : Promise.resolve()]);
   }
 
   // ─────────────────────────────────────────────
@@ -344,10 +347,21 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (IM.ground) groundPat = ctx.createPattern(IM.ground, "repeat");
     updateZoom();
+    if (player) updateCamera(1);
   }
   function updateZoom() {
-    const span = KEEP.h + 48;
-    zoom = clamp(Math.min(W, H) / span, 0.58, 1);
+    // Keep actors readable instead of shrinking the entire arena into the window.
+    zoom = Math.max(clamp(Math.min(W / 1280, H / 720), 0.8, 1.25),
+      W / (KEEP.inner.w - 480), H / (KEEP.inner.h - 480));
+  }
+  function updateCamera(follow) {
+    const halfW = W / (2 * zoom), halfH = H / (2 * zoom);
+    const minX = KEEP.x + halfW, maxX = KEEP.x + KEEP.w - halfW;
+    const minY = KEEP.y + halfH, maxY = KEEP.y + KEEP.h - halfH;
+    const targetX = clamp(player.x, minX, maxX);
+    const targetY = clamp(player.y, minY, maxY);
+    cam.x = clamp(lerp(cam.x, targetX, follow), minX, maxX);
+    cam.y = clamp(lerp(cam.y, targetY, follow), minY, maxY);
   }
   window.addEventListener("resize", resize);
 
@@ -357,16 +371,22 @@
   const keys = Object.create(null);
   const mouse = { x: 0, y: 0, wx: 0, wy: 0 };
   window.addEventListener("keydown", (e) => {
-    keys[e.code] = true;
+    if (G.mode === "levelup") {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Space"].includes(e.code)) e.preventDefault();
+      if (e.repeat) return;
+      if (e.code === "ArrowLeft" || e.code === "ArrowUp") selectCard(selectedCard - 1, true);
+      else if (e.code === "ArrowRight" || e.code === "ArrowDown") selectCard(selectedCard + 1, true);
+      else if (e.code === "Enter" || e.code === "Space") pickCard(selectedCard);
+      else if (e.code === "Digit1") pickCard(0);
+      else if (e.code === "Digit2") pickCard(1);
+      else if (e.code === "Digit3") pickCard(2);
+      return;
+    }
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
     if (e.repeat) return;
+    keys[e.code] = true;
     if (G.mode === "play" && (e.code === "Escape" || e.code === "KeyP")) pauseGame();
     else if (G.mode === "pause" && (e.code === "Escape" || e.code === "KeyP")) resumeGame();
-    if (G.mode === "levelup") {
-      if (e.code === "Digit1") pickCard(0);
-      if (e.code === "Digit2") pickCard(1);
-      if (e.code === "Digit3") pickCard(2);
-    }
   });
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
   window.addEventListener("mousemove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
@@ -387,7 +407,8 @@
   // The keep
   // ─────────────────────────────────────────────
   function buildKeep() {
-    const x = 1332, y = 1332, w = 936, h = 936, t = 44, gap = 156;
+    const w = 3200, h = 3200, t = 44, gap = 156;
+    const x = (WORLD - w) / 2, y = (WORLD - h) / 2;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const gapL = cx - gap / 2;
@@ -482,6 +503,22 @@
     };
   }
 
+  function approachPoint() {
+    // Use entrances just beyond the camera so a larger courtyard stays active.
+    const inner = KEEP.inner;
+    const minX = inner.x + 64, maxX = inner.x + inner.w - 64;
+    const minY = inner.y + 64, maxY = inner.y + inner.h - 64;
+    const halfW = W / (2 * zoom), halfH = H / (2 * zoom), margin = 120;
+    const left = cam.x - halfW - margin, right = cam.x + halfW + margin;
+    const top = cam.y - halfH - margin, bottom = cam.y + halfH + margin;
+    const edges = [];
+    if (left >= minX) edges.push({ x: left, y: rand(Math.max(minY, top), Math.min(maxY, bottom)) });
+    if (right <= maxX) edges.push({ x: right, y: rand(Math.max(minY, top), Math.min(maxY, bottom)) });
+    if (top >= minY) edges.push({ x: rand(Math.max(minX, left), Math.min(maxX, right)), y: top });
+    if (bottom <= maxY) edges.push({ x: rand(Math.max(minX, left), Math.min(maxX, right)), y: bottom });
+    return edges.length ? pick(edges) : gatePoint(irand(0, 3), 80);
+  }
+
   // ─────────────────────────────────────────────
   // Pools / world
   // ─────────────────────────────────────────────
@@ -514,12 +551,43 @@
   const telegraphs = [];
   const zones = [];
   const bolts = [];
+  const corpses = [];
+  const impacts = [];
 
   const PILLARS = [
     [1600, 1600, 32], [2000, 1600, 34], [1600, 2000, 30], [2000, 2000, 36],
     [1800, 1520, 26], [1540, 1800, 28], [2060, 1800, 28], [1800, 2080, 32],
     [1680, 1900, 26], [1920, 1700, 28],
+  ].flatMap(([x, y, r]) => [1, 2.5, 4.5].map((scale) => [
+    WORLD / 2 + (x - WORLD / 2) * scale,
+    WORLD / 2 + (y - WORLD / 2) * scale, r,
+  ]));
+
+  const SHRINE_DEFS = [
+    { x: 1688, y: 1464, kind: "armory", name: "Armory", wait: 58 },
+    { x: 1912, y: 2144, kind: "soul", name: "Soul Well", wait: 26 },
+    { x: 1452, y: 1800, kind: "wind", name: "Wind Censer", wait: 30 },
+    { x: 2148, y: 1800, kind: "wrath", name: "Wrath Brazier", wait: 30 },
+    { x: 1500, y: 1500, kind: "phial", name: "Phial", wait: 34 },
+    { x: 2100, y: 1500, kind: "might", name: "Ember", wait: 32 },
+    { x: 1500, y: 2100, kind: "aegis", name: "Aegis", wait: 38 },
+    { x: 2100, y: 2100, kind: "magnet", name: "Lodestone", wait: 36 },
   ];
+  const OUTER_SHRINES = SHRINE_DEFS.map((s) => ({ ...s,
+    x: WORLD / 2 + (s.x - WORLD / 2) * 3.8,
+    y: WORLD / 2 + (s.y - WORLD / 2) * 3.8,
+  }));
+  const SHRINE_COL = {
+    armory: "#d4b06a",
+    soul: "#8ec4ff",
+    wind: "#9ad8c8",
+    wrath: "#ffb15a",
+    phial: "#e07070",
+    might: "#ff7a3a",
+    aegis: "#ffe08a",
+    magnet: "#c8b8e0",
+  };
+  const shrines = [];
 
   function resetWorld() {
     enemies.length = 0;
@@ -531,11 +599,16 @@
     telegraphs.length = 0;
     zones.length = 0;
     bolts.length = 0;
+    corpses.length = 0;
+    impacts.length = 0;
+    artTime = 0;
     G.t = 0; G.kills = 0; G.gold = 0; G.combo = 0; G.comboT = 0;
     G.shake = 0; G.hitstop = 0; G.spawnAcc = 0; G.dawn = 0; G.brandNew = 0;
     G.spawnedBoss = { duke: 0, hydra: 0, eater: 0 };
     G.shopAfter = 0;
+    shrines.length = 0;
     for (const s of PILLARS) obstacles.push({ x: s[0], y: s[1], r: s[2] });
+    for (const s of [...SHRINE_DEFS, ...OUTER_SHRINES]) shrines.push({ x: s.x, y: s.y, kind: s.kind, name: s.name, wait: s.wait, t: 0 });
   }
 
   function makePlayer(id) {
@@ -550,6 +623,7 @@
       atkMul: c.atk,
       area: 1, cooldown: 1, pickup: 78, crit: 0.06, proj: 1,
       facing: 1, moving: 0,
+      artTime: 0, artState: null, hurtUntil: 0, castUntil: 0,
       dash: 0, dashCd: 0, dashCdMax: 2.15, inv: 0,
       dashDirX: 1, dashDirY: 0, dashHeld: false,
       lastX: 1, lastY: 0,
@@ -562,6 +636,9 @@
       bladeA: 0,
       brandId: null,
       usedPact: 0,
+      buffs: { wind: 0, might: 0, wrath: 0, magnet: 0 },
+      shield: 0,
+      swing: 0,
     };
     player = p;
     if (save.brand) {
@@ -609,6 +686,7 @@
   }
   let pendingLevels = 0;
   let offered = [];
+  let selectedCard = 0;
 
   // ─────────────────────────────────────────────
   // Spatial hash
@@ -645,6 +723,10 @@
   // FX
   // ─────────────────────────────────────────────
   function burst(x, y, n, col, spd) {
+    if (ART && ART.available() && impacts.length < 24) {
+      const kind = col === "#9ad8ff" ? "frost" : col === "#c8d0e0" || col === "#c0a070" ? "bone" : col === "#ffe08a" || col === "#d4b06a" ? "holy" : null;
+      if (kind) impacts.push({ kind, x, y, born: artTime, size: n > 20 ? 70 : 38 });
+    }
     for (let i = 0; i < n && parts.length < 500; i++) {
       const a = Math.random() * TAU;
       const s = rand(0.3, 1) * (spd || 140);
@@ -671,8 +753,10 @@
   // ─────────────────────────────────────────────
   function dmgRoll(base) {
     let d = base * player.atkMul;
+    if (player.buffs && player.buffs.might > 0) d *= 1.2;
     let crit = false;
-    if (Math.random() < player.crit) { d *= 2; crit = true; }
+    const chance = player.crit + ((player.buffs && player.buffs.wrath > 0) ? 0.12 : 0);
+    if (Math.random() < chance) { d *= 2; crit = true; }
     return { d: d | 0 || 1, crit };
   }
 
@@ -680,6 +764,7 @@
     if (e.hp <= 0) return;
     e.hp -= amount;
     e.flash = 0.1;
+    e.hurtUntil = artTime + .16;
     if (hx !== undefined) {
       const l = len(e.x - hx, e.y - hy);
       e.kx += ((e.x - hx) / l) * (90 / e.mass);
@@ -695,6 +780,10 @@
     G.kills++;
     G.combo++;
     G.comboT = 1.3;
+    if (ART && ART.available()) {
+      if (corpses.length >= 32) corpses.shift();
+      corpses.push({ ...e, flash: 0, inv: 0, born: artTime, artState: null });
+    }
     const col = e.boss ? "#d4b06a" : e.elite ? "#ffd36a" : "#c8d0e0";
     burst(e.x, e.y, e.boss ? 40 : e.elite ? 18 : 8, col, e.boss ? 260 : 160);
     if (e.boss) { G.shake = 14; G.hitstop = Math.max(G.hitstop, 0.05); SFX.boss(); }
@@ -745,8 +834,17 @@
 
   function hurtPlayer(amount, srcx, srcy) {
     if (!player || player.inv > 0 || G.mode !== "play") return;
+    if (player.shield > 0) {
+      player.shield--;
+      player.inv = 0.4;
+      burst(player.x, player.y, 14, "#ffe08a", 140);
+      floatText(player.x, player.y - 24, "AEGIS", "#ffe08a");
+      SFX.dash();
+      return;
+    }
     const red = amount * (100 / (100 + player.armor));
     player.hp -= red;
+    player.hurtUntil = artTime + .25;
     player.inv = 0.55;
     G.shake = 10;
     G.hitstop = Math.max(G.hitstop, 0.045);
@@ -775,6 +873,7 @@
   // Projectiles and weapons
   // ─────────────────────────────────────────────
   function fireBolt(x, y, a, spec) {
+    if (player && !spec.enemy) player.swing = 0.14;
     if (projs.length > 240) return;
     const s = spec.spd || 320;
     projs.push({
@@ -1195,9 +1294,11 @@
       flash: 0, slow: 0, state: "idle", st: 0, phase: 1,
       cd: d.boss ? 1.05 : 0, facing: 1,
       atkT: 0, split: 0, noShop: 0, lx: 1, ly: 0,
+      artTime: 0, artState: null, hurtUntil: 0, castUntil: 0,
     };
     e.maxHp = e.hp;
     enemies.push(e);
+    if (ART) ART.requestActor(d.img);
     return e;
   }
 
@@ -1276,6 +1377,14 @@
       e.r *= 0.84;
       e.draw *= 0.88;
     }
+    if (e.state === "tel") {
+      e.vx = 0; e.vy = 0;
+      if (e.st >= 0.28) {
+        e.state = "lunge"; e.st = 0;
+        e.vx = e.lx * 490; e.vy = e.ly * 490;
+      }
+      return;
+    }
     if (e.state === "lunge") {
       if (e.st > 0.42) { e.state = "idle"; e.cd = 0.85; e.atkT = 0; }
       return;
@@ -1286,6 +1395,7 @@
     else { e.vx = ux * e.spd * 0.75; e.vy = uy * e.spd * 0.75; }
     e.atkT += dt;
     if (e.cd <= 0) {
+      e.castUntil = artTime + .25;
       e.cd = e.phase === 2 ? 0.85 : 1.15;
       const a = Math.atan2(player.y - e.y, player.x - e.x);
       const spread = e.phase === 2 ? 3 : 1;
@@ -1295,11 +1405,11 @@
       }
     }
     if (e.atkT > (e.phase === 2 ? 3.1 : 4.2)) {
-      e.state = "lunge";
+      e.state = "tel";
       e.st = 0;
       e.atkT = 0;
-      e.vx = ux * 490;
-      e.vy = uy * 490;
+      e.lx = ux; e.ly = uy;
+      e.vx = 0; e.vy = 0;
       telegraphs.push({
         kind: "line", x: e.x, y: e.y, dx: ux, dy: uy, len: 280, t: 0, life: 0.28,
       });
@@ -1326,6 +1436,7 @@
       e.vy = uy * e.spd * 1.22;
     }
     if (e.cd <= 0) {
+      e.castUntil = artTime + .35;
       const n = e.phase === 2 ? 2 : 1;
       e.cd = e.phase === 2 ? 1.05 : 1.35;
       const inner = KEEP.inner;
@@ -1377,6 +1488,7 @@
           e.vy = ux * e.spd * 0.6 * spdMul;
         }
         if (e.cd <= 0) {
+          e.castUntil = artTime + .22;
           e.cd = 1.7;
           projsEnemy(e.x, e.y, Math.atan2(dy, dx), 12, 250);
         }
@@ -1499,7 +1611,8 @@
     const eliteP = G.oath ? 0.055 + t / 7000 : 0.018 + t / 11000;
     while (G.spawnAcc >= 1) {
       G.spawnAcc -= 1;
-      spawnEnemy(pickType(), undefined, undefined, Math.random() < eliteP);
+      const at = approachPoint();
+      spawnEnemy(pickType(), at.x, at.y, Math.random() < eliteP);
     }
     const every = G.oath ? 28 : 38;
     if (t > 14 && ((t / every) | 0) !== (((t - dt) / every) | 0)) {
@@ -1517,21 +1630,21 @@
       G.spawnedBoss.duke = 1;
       banner("THE WAILING DUKE", 2.6);
       SFX.boss();
-      const at = gatePoint(0, 80, 0);
+      const at = approachPoint();
       spawnEnemy("duke", at.x, at.y);
     }
     if (t >= 360 && !G.spawnedBoss.hydra) {
       G.spawnedBoss.hydra = 1;
       banner("BONE HYDRA", 2.6);
       SFX.boss();
-      const at = gatePoint(1, 90, 0);
+      const at = approachPoint();
       spawnEnemy("hydra", at.x, at.y);
     }
     if (t >= RUN_DAWN && !G.spawnedBoss.eater) {
       G.spawnedBoss.eater = 1;
       banner("THE DAWN EATER", 3);
       SFX.boss();
-      const at = gatePoint(0, 120, 0);
+      const at = approachPoint();
       spawnEnemy("eater", at.x, at.y);
     }
   }
@@ -1561,12 +1674,13 @@
       knightDash(p);
     }
     p.dashHeld = wantDash;
+    const boost = p.buffs && p.buffs.wind > 0 ? 1.22 : 1;
     if (p.dash > 0) {
-      const spd = p.baseSpd * 3.55;
+      const spd = p.baseSpd * 3.55 * boost;
       p.vx = p.dashDirX * spd;
       p.vy = p.dashDirY * spd;
     } else {
-      const spd = p.baseSpd;
+      const spd = p.baseSpd * boost;
       p.vx = lerp(p.vx, a.x * spd, 0.22);
       p.vy = lerp(p.vy, a.y * spd, 0.22);
     }
@@ -1580,9 +1694,78 @@
     p.dash = Math.max(0, p.dash - dt);
     p.dashCd = Math.max(0, p.dashCd - dt);
     p.inv = Math.max(0, p.inv - dt);
+    p.swing = Math.max(0, (p.swing || 0) - dt);
+    if (p.buffs) {
+      p.buffs.wind = Math.max(0, p.buffs.wind - dt);
+      p.buffs.might = Math.max(0, p.buffs.might - dt);
+      p.buffs.wrath = Math.max(0, p.buffs.wrath - dt);
+      p.buffs.magnet = Math.max(0, p.buffs.magnet - dt);
+    }
+    updateShrines(dt);
 
     mouse.wx = (mouse.x - W / 2) / zoom + cam.x;
     mouse.wy = (mouse.y - H / 2) / zoom + cam.y;
+  }
+
+  function grantArmory() {
+    const owned = player.weapons.filter((w) => w.lv < 8);
+    const fresh = Object.keys(WEAPONS).filter((id) => WEAPONS[id].kind === "weapon" && !hasW(id));
+    if (fresh.length && player.weapons.length < 6 && (owned.length === 0 || Math.random() < 0.45)) {
+      const id = pick(fresh);
+      player.weapons.push({ id, lv: 1 });
+      banner(WEAPONS[id].name.toUpperCase(), 1.3);
+    } else if (owned.length) {
+      const w = pick(owned);
+      w.lv++;
+      banner(WEAPONS[w.id].name.toUpperCase() + " +1", 1.2);
+    } else {
+      G.gold += 35;
+      floatText(player.x, player.y - 22, "+35", "#d4b06a");
+    }
+    paintDock();
+  }
+
+  function applyShrine(s) {
+    const p = player;
+    SFX.pickup();
+    burst(s.x, s.y - 12, 12, SHRINE_COL[s.kind] || "#d4b06a", 90);
+    if (s.kind === "armory") grantArmory();
+    else if (s.kind === "soul") {
+      const n = 16 + p.level * 3;
+      grantXp(n);
+      floatText(p.x, p.y - 22, "+" + n, "#8ec4ff");
+    } else if (s.kind === "wind") {
+      p.buffs.wind = 14;
+      floatText(p.x, p.y - 22, "WIND", "#9ad8c8");
+    } else if (s.kind === "wrath") {
+      p.buffs.wrath = 14;
+      floatText(p.x, p.y - 22, "WRATH", "#ffb15a");
+    } else if (s.kind === "phial") {
+      const n = 42;
+      p.hp = Math.min(p.maxHp, p.hp + n);
+      floatText(p.x, p.y - 22, "+" + n, "#e07070");
+    } else if (s.kind === "might") {
+      p.buffs.might = 14;
+      floatText(p.x, p.y - 22, "EMBER", "#ff7a3a");
+    } else if (s.kind === "aegis") {
+      p.shield = (p.shield || 0) + 1;
+      floatText(p.x, p.y - 22, "AEGIS", "#ffe08a");
+    } else if (s.kind === "magnet") {
+      p.buffs.magnet = 16;
+      floatText(p.x, p.y - 22, "LODESTONE", "#c8b8e0");
+    }
+  }
+
+  function updateShrines(dt) {
+    if (!player || G.mode !== "play") return;
+    for (const s of shrines) {
+      if (s.t > 0) s.t = Math.max(0, s.t - dt);
+      if (s.t > 0) continue;
+      if (dist2(player.x, player.y, s.x, s.y) < 42 * 42) {
+        s.t = s.wait;
+        applyShrine(s);
+      }
+    }
   }
 
   function coalesceSouls() {
@@ -1611,7 +1794,8 @@
       if (!u) continue;
       u.t += dt;
       const d = Math.hypot(p.x - u.x, p.y - u.y);
-      const reach = u.kind === "xp" || u.kind === "gold" ? p.pickup : 28;
+      let reach = u.kind === "xp" || u.kind === "gold" ? p.pickup : 28;
+      if (p.buffs && p.buffs.magnet > 0 && (u.kind === "xp" || u.kind === "gold")) reach += 100;
       if (d < reach + 40) {
         const pull = clamp(1 - d / (reach + 40), 0, 1);
         u.x += (p.x - u.x) * pull * 8 * dt;
@@ -1775,9 +1959,21 @@
     player.hp = Math.min(player.hp, player.maxHp);
   }
 
+  function selectCard(i, focus = false) {
+    if (!offered.length) return;
+    selectedCard = (i + offered.length) % offered.length;
+    Array.from($("level-cards").children).forEach((el, index) => {
+      const selected = index === selectedCard;
+      el.classList.toggle("selected", selected);
+      el.tabIndex = selected ? 0 : -1;
+      if (selected && focus) el.focus({ preventScroll: true });
+    });
+  }
+
   function openLevelUp() {
     if (G.mode !== "play" && G.mode !== "levelup") return;
     G.mode = "levelup";
+    Object.keys(keys).forEach((code) => { keys[code] = false; });
     SFX.level();
     offered = drawCards();
     const box = $("level-cards");
@@ -1786,11 +1982,16 @@
       const v = cardView(c);
       const el = document.createElement("div");
       el.className = "card" + (v.evo ? " evo" : "");
-      el.innerHTML = `<div class="ico">${v.ico}</div><div class="kind">${i + 1} · ${v.kind}</div><h3>${v.title}</h3><p>${v.body}</p><div class="lv">${v.lv}</div>`;
+      el.setAttribute("role", "button");
+      const icon = ART ? ART.iconHTML(c.id || (c.type === "heal" ? "meat" : "gold"), v.ico) : v.ico;
+      el.innerHTML = `<div class="ico">${icon}</div><div class="kind">${i + 1} · ${v.kind}</div><h3>${v.title}</h3><p>${v.body}</p><div class="lv">${v.lv}</div>`;
       el.onclick = () => pickCard(i);
+      el.onmouseenter = () => selectCard(i);
+      el.onfocus = () => selectCard(i);
       box.appendChild(el);
     });
     showLayer("levelup");
+    selectCard(0, true);
   }
 
   function pickCard(i) {
@@ -1867,14 +2068,107 @@
     return { x: (x - cam.x) * zoom + W / 2, y: (y - cam.y) * zoom + H / 2 };
   }
 
-  function drawSprite(name, x, y, size, flip, flash, bob) {
+  function stepPose(moving, t, seed) {
+    const phase = t * (moving ? 13 : 2.2) + seed;
+    const s = Math.sin(phase);
+    return {
+      bob: moving ? -Math.abs(s) * 3.4 : Math.sin(t * 2.2 + seed) * 1.1,
+      sx: 1 + (moving ? s * 0.07 : 0),
+      sy: 1 - (moving ? s * 0.06 : 0),
+      rot: moving ? s * 0.09 : Math.sin(t * 1.5 + seed) * 0.02,
+    };
+  }
+  function flapPose(t, seed) {
+    const f = Math.sin(t * 18 + seed);
+    return {
+      bob: Math.sin(t * 4.2 + seed) * 7,
+      sx: 1 + f * 0.2,
+      sy: 1 - f * 0.16,
+      rot: Math.sin(t * 3.1 + seed) * 0.22,
+    };
+  }
+  function blobPose(moving, t, seed) {
+    const s = Math.sin(t * (moving ? 9 : 3.2) + seed);
+    return {
+      bob: moving ? -Math.max(0, s) * 3 : Math.sin(t * 2 + seed) * 1,
+      sx: 1 + s * (moving ? 0.18 : 0.1),
+      sy: 1 - s * (moving ? 0.16 : 0.08),
+      rot: 0,
+    };
+  }
+  function heavyPose(moving, t, seed) {
+    const rate = moving ? 3.6 : 1.4;
+    const s = Math.sin(t * rate + seed);
+    const plant = moving ? Math.pow(Math.max(0, Math.sin(t * rate + seed)), 2) : 0;
+    return {
+      bob: -plant * 3,
+      sx: 1 + plant * 0.1,
+      sy: 1 - plant * 0.08 + s * 0.02,
+      rot: s * 0.04,
+    };
+  }
+  function driftPose(t, seed) {
+    return {
+      bob: Math.sin(t * 2.1 + seed) * 6,
+      sx: 1 + Math.sin(t * 2.8 + seed) * 0.05,
+      sy: 1 + Math.sin(t * 1.7 + seed) * 0.04,
+      rot: Math.sin(t * 1.3 + seed) * 0.14,
+    };
+  }
+  function swayPose(t, seed) {
+    const s = Math.sin(t * 2.6 + seed);
+    return {
+      bob: Math.sin(t * 1.8 + seed) * 4,
+      sx: 1 + Math.abs(s) * 0.05,
+      sy: 1,
+      rot: s * 0.12,
+    };
+  }
+  function enemyPose(e) {
+    const moving = Math.hypot(e.vx, e.vy) > 10;
+    const seed = e.x * 0.02 + e.y * 0.013;
+    if (e.ai === "sine" || e.type === "bat") return flapPose(G.t, seed);
+    if (e.type === "slime" || e.type === "mite") return blobPose(moving, G.t, seed);
+    if (e.type === "golem" || e.type === "duke") return heavyPose(moving, G.t, seed);
+    if (e.type === "shade" || e.type === "wight" || e.type === "eater") return driftPose(G.t, seed);
+    if (e.type === "hydra") return swayPose(G.t, seed);
+    return stepPose(moving, G.t, seed);
+  }
+  function knightPose(p) {
+    const pose = stepPose(!!(p.moving || p.dash > 0), G.t, 0.4);
+    if (p.dash > 0) {
+      pose.sx *= 1.14;
+      pose.sy *= 0.88;
+      pose.bob -= 3;
+    }
+    if (p.swing > 0) pose.rot -= 0.28 * (p.swing / 0.14);
+    if (!p.moving && p.dash <= 0) pose.rot += Math.sin(G.t * 1.6) * 0.015;
+    return pose;
+  }
+
+  function drawSprite(name, x, y, size, flip, flash, pose, actor, dying = false) {
     const im = IM[name];
-    const sy = y + (bob || 0);
-    const s = worldToScreen(x, sy);
-    if (s.x < -80 || s.y < -80 || s.x > W + 80 || s.y > H + 80) return;
+    pose = pose || {};
+    const bob = pose.bob || 0;
+    const sx = pose.sx || 1;
+    const sy = pose.sy || 1;
+    const rot = pose.rot || 0;
+    const s = worldToScreen(x, y);
+    if (s.x < -120 || s.y < -120 || s.x > W + 120 || s.y > H + 120) return;
     ctx.save();
-    ctx.translate(x, sy);
+    ctx.translate(x, y + 2);
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.beginPath();
+    ctx.ellipse(0, 2, size * 0.22 * sx, size * 0.07, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    if (actor && ART && ART.drawActor(ctx, name, x, y, size, actor, artTime, dying)) return;
+    ctx.save();
+    ctx.translate(x, y);
     if (flip < 0) ctx.scale(-1, 1);
+    ctx.rotate(rot);
+    ctx.translate(0, bob);
+    ctx.scale(sx, sy);
     if (im) {
       const aspect = im.width / im.height;
       const h = size, w = size * aspect;
@@ -1895,6 +2189,7 @@
 
   function drawWall(w) {
     const horiz = w.w >= w.h;
+    if (ART && ART.drawWall(ctx, w, player)) return;
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fillRect(w.x + 4, w.y + 6, w.w, w.h);
     ctx.fillStyle = "#4a4338";
@@ -1911,6 +2206,8 @@
   }
 
   function drawPillar(o) {
+    if (ART && ART.drawProp(ctx, o.r > 30 ? "pillar" : "pillar_broken", o.x, o.y, o.r * 4.6,
+      player && player.y < o.y && Math.abs(player.y - o.y) < 85 && Math.abs(player.x - o.x) < o.r + 20 ? .58 : 1)) return;
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath(); ctx.ellipse(o.x + 3, o.y + 6, o.r * 1.05, o.r * 0.45, 0, 0, TAU); ctx.fill();
     const layers = 4;
@@ -1932,6 +2229,8 @@
 
   function drawPickup(u) {
     const bob = Math.sin(G.t * 5 + u.x) * 3;
+    const size = u.kind === "xp" ? clamp(9 + Math.sqrt(u.val) * 1.3, 10, 24) : u.kind === "chest" ? 26 : u.kind === "meat" ? 19 : 15;
+    if (ART && ART.drawIcon(ctx, u.kind, u.x, u.y + bob, size)) return;
     if (u.kind === "xp") {
       const s = clamp(3.5 + Math.sqrt(u.val) * 0.7, 4, 13);
       ctx.fillStyle = u.val > 20 ? "#d4e6ff" : "#8ec4ff";
@@ -1953,8 +2252,54 @@
     }
   }
 
+  function drawShrine(s) {
+    const ready = s.t <= 0;
+    const bob = ready ? Math.sin(G.t * 3 + s.x) * 3 : 0;
+    const col = SHRINE_COL[s.kind] || "#d4b06a";
+    const rendered = ART && ART.drawProp(ctx, ready ? "shrine_" + s.kind : "shrine_spent", s.x, s.y, 100);
+    if (!rendered) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 4, 18, 7, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = ready ? "#3e3830" : "#2a2622";
+    ctx.fillRect(s.x - 11, s.y - 14, 22, 16);
+    ctx.fillStyle = ready ? "#6a604e" : "#3a342c";
+    ctx.fillRect(s.x - 14, s.y - 18, 28, 6);
+    }
+    if (ready) {
+      ctx.fillStyle = col;
+      ctx.globalAlpha = 0.22;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - 30 + bob, 18, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - 30 + bob, 5.5, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 26 + Math.sin(G.t * 2 + s.y) * 2, 0, TAU);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#efe6d4";
+      ctx.font = "bold 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(s.name, s.x, s.y - 53 + bob);
+    } else {
+      ctx.strokeStyle = "rgba(180, 160, 120, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const u = 1 - s.t / s.wait;
+      ctx.arc(s.x, s.y - 16, 12, -Math.PI / 2, -Math.PI / 2 + TAU * u);
+      ctx.stroke();
+    }
+  }
+
   function drawEnemy(e) {
-    const bob = Math.sin(G.t * (e.ai === "sine" ? 10 : 6) + e.x) * 2;
     if (e.elite) {
       ctx.strokeStyle = "rgba(212,176,106,0.7)";
       ctx.lineWidth = 2;
@@ -1966,7 +2311,12 @@
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 10, 0, TAU); ctx.stroke();
       ctx.setLineDash([]);
     }
-    drawSprite(e.img, e.x, e.y, e.draw, e.facing, e.flash, bob);
+    if (e.boss && e.phase > 1) {
+      ctx.strokeStyle = "rgba(236,139,70,.55)";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r + 8, (e.r + 8) * .4, 0, 0, TAU); ctx.stroke();
+    }
+    drawSprite(e.img, e.x, e.y, e.draw, e.facing, e.flash, enemyPose(e), e);
     if (e.boss || e.elite) {
       const bw = e.boss ? 64 : 36;
       ctx.fillStyle = "#1a1010";
@@ -1978,9 +2328,15 @@
 
   function drawKnight() {
     const p = player;
-    const bob = p.moving ? Math.sin(G.t * 14) * 2.5 : Math.sin(G.t * 3) * 1.2;
+    if (p.shield > 0) {
+      ctx.strokeStyle = "rgba(255, 224, 138, 0.85)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 28, 30 + Math.sin(G.t * 6) * 2, 0, TAU);
+      ctx.stroke();
+    }
     if (p.dash > 0 || p.inv > 0) ctx.globalAlpha = 0.45 + Math.sin(G.t * 40) * 0.1;
-    drawSprite(CHARS[p.id].img, p.x, p.y, 72, p.facing, p.inv > 0 ? 0.08 : 0, bob);
+    drawSprite(CHARS[p.id].img, p.x, p.y, 72, p.facing, p.inv > 0 ? 0.08 : 0, knightPose(p), p, G.mode === "dead");
     ctx.globalAlpha = 1;
     for (const w of p.weapons) {
       if (w.id !== "oathblade" && w.id !== "crown") continue;
@@ -1993,6 +2349,7 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(a + Math.PI / 2);
+        if (ART && ART.drawIcon(ctx, w.id === "crown" ? "crown" : "oathblade", 0, 0, w.id === "crown" ? 40 : 32)) { ctx.restore(); continue; }
         ctx.fillStyle = w.id === "crown" ? "#ffe08a" : "#d0d6de";
         ctx.fillRect(-2.5, -14, 5, 28);
         ctx.fillStyle = "#d4b06a";
@@ -2066,6 +2423,7 @@
         const tx = g.x + g.tx * s * (KEEP.gap * 0.5 + 10);
         const ty = g.y + g.ty * s * (KEEP.gap * 0.5 + 10);
         const f = 5 + Math.sin(G.t * 9 + tx) * 1.6;
+        if (ART) ART.drawProp(ctx, "brazier", tx, ty, 62);
         ctx.fillStyle = "rgba(255, 150, 50, 0.28)";
         ctx.beginPath(); ctx.arc(tx, ty, f * 2.4, 0, TAU); ctx.fill();
         ctx.fillStyle = "#ffb15a";
@@ -2084,18 +2442,18 @@
     ctx.save();
     const shx = (Math.random() - 0.5) * G.shake;
     const shy = (Math.random() - 0.5) * G.shake;
-    updateZoom();
     ctx.translate(W / 2 + shx, H / 2 + shy);
     ctx.scale(zoom, zoom);
     ctx.translate(-cam.x, -cam.y);
 
-    if (groundPat) {
+    if (groundPat && !(ART && ART.available())) {
       ctx.fillStyle = groundPat;
       ctx.fillRect(0, 0, WORLD, WORLD);
     } else {
       ctx.fillStyle = "#1a1714";
       ctx.fillRect(0, 0, WORLD, WORLD);
     }
+    if (ART) ART.drawGround(ctx, KEEP);
 
     ctx.fillStyle = "rgba(8, 6, 12, 0.55)";
     ctx.fillRect(0, 0, WORLD, KEEP.y);
@@ -2113,6 +2471,13 @@
     }
 
     drawGates();
+    if (ART && ART.available()) {
+      for (const g of KEEP.gates) {
+        const bx = g.x + g.tx * (KEEP.gap / 2 + 55);
+        const by = g.y + g.ty * (KEEP.gap / 2 + 55);
+        ART.drawProp(ctx, "banner", bx, by, 76, .75);
+      }
+    }
 
     for (const tg of telegraphs) {
       if (tg.kind === "meteor" || tg.kind === "slam") {
@@ -2138,18 +2503,32 @@
 
     drawZones();
 
+    const viewLeft = cam.x - W / (2 * zoom) - 180;
+    const viewRight = cam.x + W / (2 * zoom) + 180;
+    const viewTop = cam.y - H / (2 * zoom) - 180;
+    const viewBottom = cam.y + H / (2 * zoom) + 180;
+    const visible = (o) => o.x >= viewLeft && o.x <= viewRight && o.y >= viewTop && o.y <= viewBottom;
     drawList.length = 0;
-    for (const w of KEEP.walls) drawList.push({ y: w.y + w.h, kind: "wall", w });
-    for (const o of obstacles) drawList.push({ y: o.y, kind: "pillar", o });
-    for (const u of pickups) drawList.push({ y: u.y, kind: "pickup", u });
-    for (const e of enemies) if (e.hp > 0) drawList.push({ y: e.y, kind: "enemy", e });
+    for (const w of KEEP.walls) if (w.x <= viewRight && w.x + w.w >= viewLeft && w.y <= viewBottom && w.y + w.h >= viewTop) drawList.push({ y: w.y + w.h, kind: "wall", w });
+    for (const o of obstacles) if (visible(o)) drawList.push({ y: o.y, kind: "pillar", o });
+    for (const u of pickups) if (visible(u)) drawList.push({ y: u.y, kind: "pickup", u });
+    for (const s of shrines) if (visible(s)) drawList.push({ y: s.y, kind: "shrine", s });
+    for (const e of enemies) if (e.hp > 0 && visible(e)) drawList.push({ y: e.y, kind: "enemy", e });
+    for (const e of corpses) if (visible(e)) drawList.push({ y: e.y, kind: "corpse", e });
     if (player && G.mode !== "menu") drawList.push({ y: player.y, kind: "player" });
     drawList.sort((a, b) => a.y - b.y);
     for (const d of drawList) {
       if (d.kind === "wall") drawWall(d.w);
       else if (d.kind === "pillar") drawPillar(d.o);
       else if (d.kind === "pickup") drawPickup(d.u);
+      else if (d.kind === "shrine") drawShrine(d.s);
       else if (d.kind === "enemy") drawEnemy(d.e);
+      else if (d.kind === "corpse") {
+        ctx.save();
+        ctx.globalAlpha = clamp(1 - (artTime - d.e.born) / .7, 0, 1);
+        drawSprite(d.e.img, d.e.x, d.e.y, d.e.draw, d.e.facing, 0, {}, d.e, true);
+        ctx.restore();
+      }
       else if (d.kind === "player") drawKnight();
     }
 
@@ -2157,6 +2536,8 @@
       ctx.save();
       ctx.translate(pr.x, pr.y);
       ctx.rotate(pr.a || Math.atan2(pr.vy, pr.vx));
+      const projectileIcon = pr.kind === "holy" ? "holy" : pr.kind === "frost" ? "frost" : pr.kind === "skull" ? "grave" : pr.kind === "bone" || pr.enemy ? "bone" : null;
+      if (projectileIcon && ART && ART.drawIcon(ctx, projectileIcon, 0, 0, pr.kind === "skull" ? pr.r * 2.7 : 23, Math.PI / 2)) { ctx.restore(); continue; }
       if (pr.kind === "holy") {
         ctx.fillStyle = "#ffe08a";
         ctx.fillRect(-8, -3, 16, 6);
@@ -2201,6 +2582,7 @@
       ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, TAU); ctx.fill();
     }
     ctx.globalAlpha = 1;
+    if (ART) for (const fx of impacts) ART.drawEffect(ctx, fx.kind, fx.x, fx.y, fx.size, artTime - fx.born);
 
     for (const f of floats) {
       ctx.globalAlpha = clamp(f.life / 0.4, 0, 1);
@@ -2228,19 +2610,38 @@
     }
   }
 
+  function hudText(id, value) {
+    const el = $(id);
+    const text = String(value);
+    if (el.textContent !== text) el.textContent = text;
+  }
+
   function paintHud() {
     if (!player || (G.mode !== "play" && G.mode !== "levelup" && G.mode !== "shop" && G.mode !== "pause")) return;
-    $("hud-time").textContent = fmtTime(G.t);
-    $("hud-kills").textContent = G.combo >= 10 ? G.kills + " ×" + G.combo : String(G.kills);
-    $("hud-gold").textContent = G.gold;
-    $("hud-lv").textContent = player.level;
+    hudText("hud-time", fmtTime(G.t));
+    hudText("hud-kills", G.combo >= 10 ? G.kills + " ×" + G.combo : String(G.kills));
+    hudText("hud-gold", G.gold);
+    hudText("hud-lv", player.level);
     $("hp-fill").style.width = (100 * player.hp / player.maxHp) + "%";
-    $("hp-lbl").textContent = Math.ceil(player.hp) + " / " + player.maxHp;
+    hudText("hp-lbl", Math.ceil(player.hp) + " / " + player.maxHp);
     $("xp-fill").style.width = (100 * player.xp / player.next) + "%";
-    $("xp-lbl").textContent = player.xp + " / " + player.next;
+    hudText("xp-lbl", player.xp + " / " + player.next);
     const maxCd = player.dashCdMax || 2.15;
     const dash = player.dashCd <= 0 ? 1 : 1 - player.dashCd / maxCd;
     $("dash-fill").style.width = (100 * clamp(dash, 0, 1)) + "%";
+    const brow = $("buff-row");
+    if (brow) {
+      const bits = [];
+      if (player.shield > 0) bits.push("Aegis ×" + player.shield);
+      if (player.buffs) {
+        if (player.buffs.wind > 0) bits.push("Wind " + Math.ceil(player.buffs.wind));
+        if (player.buffs.might > 0) bits.push("Ember " + Math.ceil(player.buffs.might));
+        if (player.buffs.wrath > 0) bits.push("Wrath " + Math.ceil(player.buffs.wrath));
+        if (player.buffs.magnet > 0) bits.push("Lode " + Math.ceil(player.buffs.magnet));
+      }
+      const text = bits.join("   ");
+      if (brow.textContent !== text) brow.textContent = text;
+    }
     const wrap = $("boss-wrap");
     if (!wrap) return;
     let hp = 0, max = 0, name = "", n = 0, type = "";
@@ -2252,7 +2653,7 @@
     else {
       wrap.classList.add("show");
       name = n > 1 && type === "hydra" ? "Bone Hydra" : (BOSS_NAME[type] || "Boss");
-      $("boss-name").textContent = name;
+      hudText("boss-name", name);
       $("boss-fill").style.width = (100 * clamp(hp / max, 0, 1)) + "%";
     }
   }
@@ -2263,11 +2664,11 @@
     dock.innerHTML = player.weapons.map((w) => {
       const d = WEAPONS[w.id];
       const tip = d.name + " " + w.lv + evoLine(w.id);
-      return `<div class="wep" title="${tip}"><span>${d.icon}</span><b>${w.lv}</b></div>`;
+      return `<div class="wep" title="${tip}"><span>${ART ? ART.iconHTML(w.id, d.icon) : d.icon}</span><b>${w.lv}</b></div>`;
     }).join("") + player.passives.map((p) => {
       const d = PASSIVES[p.id];
       const tip = d.name + " " + p.lv + virtueLine(p.id);
-      return `<div class="wep" title="${tip}"><span>${d.icon}</span><b>${p.lv}</b></div>`;
+      return `<div class="wep" title="${tip}"><span>${ART ? ART.iconHTML(p.id, d.icon) : d.icon}</span><b>${p.lv}</b></div>`;
     }).join("");
   }
 
@@ -2282,9 +2683,9 @@
       let dt = dt0;
       if (G.hitstop > 0) { G.hitstop -= dt; dt *= 0.15; }
       G.t += dt;
+      artTime += dt;
       updatePlayer(dt);
-      cam.x = lerp(cam.x, player.x, 0.12);
-      cam.y = lerp(cam.y, player.y, 0.12);
+      updateCamera(0.12);
       director(dt);
       updateEnemies(dt);
       rebuildHash();
@@ -2296,9 +2697,16 @@
       updateFx(dt);
       paintHud();
     } else if (player) {
-      cam.x = lerp(cam.x, player.x, 0.08);
-      cam.y = lerp(cam.y, player.y, 0.08);
+      if (G.mode === "dead" || G.mode === "win") artTime += dt0;
+      updateCamera(0.08);
       if (G.mode === "win") G.dawn = Math.min(1, G.dawn + dt0 * 0.65);
+    }
+    for (let i = corpses.length - 1; i >= 0; i--) if (artTime - corpses[i].born > .7) corpses.splice(i, 1);
+    for (let i = impacts.length - 1; i >= 0; i--) if (artTime - impacts[i].born > .36) impacts.splice(i, 1);
+    if (ART && G.mode === "play") {
+      if (G.t > 135) ART.requestActor("duke");
+      if (G.t > 315) ART.requestActor("hydra");
+      if (G.t > 465) ART.requestActor("dawneater");
     }
     render();
     requestAnimationFrame(frame);
@@ -2345,7 +2753,7 @@
       const el = document.createElement("div");
       el.className = "char-card" + (unlocked ? "" : " locked");
       el.innerHTML = `
-        <img src="assets/sprites/${c.img}.png" alt="" />
+        <img src="${ART ? ART.portrait(c.img) : "assets/sprites/" + c.img + ".png"}" alt="" />
         <h3>${c.name}</h3>
         <p>${c.blurb}</p>
         <p>HP ${c.hp} · Speed ${c.spd} · ${WEAPONS[c.start].name}</p>
@@ -2414,6 +2822,7 @@
     pendingLevels = 0;
     G.oath = save.swear ? 1 : 0;
     makePlayer(save.selected || "aldric");
+    if (ART) ART.requestActor(player.id);
     recacheStats();
     player.hp = player.maxHp;
     player.inv = 1.4;
@@ -2524,6 +2933,18 @@
     }
     const w0 = KEEP.walls[0];
     assert(pointInWalls(w0.x + w0.w * 0.5, w0.y + w0.h * 0.5), "wall not solid");
+    const inner = KEEP.inner;
+    for (const s of [...SHRINE_DEFS, ...OUTER_SHRINES]) {
+      assert(s.x > inner.x + 16 && s.x < inner.x + inner.w - 16, "shrine x " + s.name);
+      assert(s.y > inner.y + 16 && s.y < inner.y + inner.h - 16, "shrine y " + s.name);
+      assert(!pointInWalls(s.x, s.y), "shrine in wall " + s.name);
+    }
+    const flapA = flapPose(0, 1);
+    const flapB = flapPose(0.12, 1);
+    assert(Math.abs(flapA.sx - flapB.sx) > 0.02, "bat wings do not move");
+    const stepA = stepPose(true, 0, 0);
+    const stepB = stepPose(true, 0.18, 0);
+    assert(stepA.bob !== stepB.bob || stepA.rot !== stepB.rot, "knight step is static");
 
     resetWorld();
     const brandWas = save.brand;
@@ -2594,6 +3015,19 @@
     assert(zones.some((z) => z.kind === "arc"), "aldric dash left no arc");
     keys.Space = false;
     player.dashHeld = false;
+
+    const wind = shrines.find((s) => s.kind === "wind");
+    player.x = wind.x;
+    player.y = wind.y;
+    player.buffs.wind = 0;
+    updateShrines(0.05);
+    assert(player.buffs.wind > 10, "wind shrine gave no speed");
+    assert(wind.t > 20, "wind shrine stayed lit");
+    const held = player.buffs.wind;
+    updateShrines(0.05);
+    assert(player.buffs.wind === held, "shrine fired twice");
+    player.x = WORLD / 2;
+    player.y = WORLD / 2;
 
     enemies.length = 0;
     zones.length = 0;

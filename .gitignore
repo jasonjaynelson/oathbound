@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 assets/sprites/_tile_check.png
 /tmp/
+art/build/
+*.blend1

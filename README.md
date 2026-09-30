@@ -28,13 +28,14 @@ Then open `http://127.0.0.1:8765/`.
 | Shift or Space | Dash along your last direction |
 | Mouse | Aim fire and ice |
 | 1 / 2 / 3 | Pick a blessing |
+| Arrows + Enter (blessing screen) | Select and accept a blessing |
 | Esc / P | Pause |
 
 ## What this improves
 
 The games sold as Knight Survivor / Knight Survival are thin Vampire Survivors clones: ads, empty arenas, geometric slimes, and a knight who somehow shops for a flamethrower. Oathbound keeps the compulsive loop and replaces the rest.
 
-- A ruined courtyard with gates. The dead come through the breaches, and the oath holds you inside
+- A 3,200 × 3,200 ruined courtyard fills the window and extends beyond it. The camera follows the knight, with shrines across the central court and outer grounds. Enemies approach beyond the camera, and waves surge through the gates.
 - Auto-firing weapons, and a dash that commits to your last direction
 - Each knight's dash does something: Aldric cuts, Mara plants a cross, the Hollow leaves blood
 - Level-up blessings name the virtue that evolves a weapon. Virtues change how that weapon fights before the evolution
@@ -45,6 +46,12 @@ The games sold as Knight Survivor / Knight Survival are thin Vampire Survivors c
 - No ads, no stamina, no real-money shop
 
 Survive 8:30, kill the Dawn Eater, see the sun.
+
+## Blender art
+
+Knights, enemies, and bosses now use animated Blender-rendered sprites. The courtyard has rendered stonework and shrine props, and weapons and rewards share a matching icon set. Open `/art/preview.html` on the local server to inspect the animations.
+
+Editable Blender scenes, export commands, and browser verification results are documented in [art/README.md](art/README.md). Add `?art=legacy` to the game URL to compare the original art.
 
 ## Knights
 
